@@ -2,7 +2,77 @@ import openslide
 import json
 import os
 import numpy as np
+import sys
 from PIL import Image, ImageDraw
+from pathlib import Path
+
+svs_dir = "/home/meri/SharedFolder/PKG-HER2tumorROIs_v3/Yale_HER2_cohort/SVS/"
+output_dir = "/home/meri/SharedFolder/out"
+
+def get_slide_path(geojson_path, svs_dir):
+    file_name_without_extension = Path(geojson_path).name
+    file_name = Path(file_name_without_extension).stem
+    return os.path.join(svs_dir, file_name + ".svs")
+
+def get_output_file_paths(geojson_path, output_dir):
+    file_name_without_extension = Path(geojson_path).name
+    file_name = Path(file_name_without_extension).stem
+    return os.path.join(output_dir, file_name + "_mask"),  os.path.join(output_dir, file_name + "_neg")
+
+def processPath(json_path, slide_path, mask_file_path, neg_file_path):
+    slide = openslide.OpenSlide(slide_path)
+    with open(json_path, "r") as f:
+        annotations = json.load(f)
+
+    for feature in annotations["features"]:
+        geom = feature["geometry"]
+        coords = geom["coordinates"]
+        coords_NL = []
+        for conture in coords:
+            process_conture(slide, conture, mask_file_path, neg_file_path)
+    slide.close()
+
+def create_mask(patch_size, coords_NL, offset_x, offset_y):
+    mask = Image.new("L", patch_size, 0)  # Black background
+    draw = ImageDraw.Draw(mask)
+    # Adjust coordinates relative to patch (since we extracted a bounding box)
+    relative_coords = [(x - offset_x, y - offset_y) for x, y in coords_NL]
+    # Draw polygon on mask (white for cancerous area)
+    draw.polygon(relative_coords, outline=255, fill=255)
+    ret = np.array(mask)
+    return ret;
+
+def dbg_nparray_to_png(pixels, path):
+    image = Image.fromarray(pixels)
+    image.save(path + ".png")
+
+
+def process_conture(slide, conture, mask_file_path, neg_file_path):
+    xmin = int(min([point[0] for point in conture]))
+    xmax = int(max([point[0] for point in conture]))
+    ymin = int(min([point[1] for point in conture]))
+    ymax = int(max([point[1] for point in conture]))
+    width, height = xmax - xmin, ymax - ymin
+    LEVEL = 0
+    patch = slide.read_region((xmin, ymin), LEVEL, (width, height)).convert("RGB")
+    patch_array = np.array(patch)
+    del patch
+    mask = create_mask((width, height), conture, xmin, ymin)
+    masked_patch = np.where(mask[..., None] == 255, patch_array, 0)
+#    np.save(mask_file_path, masked_patch)
+    dbg_nparray_to_png(masked_patch, mask_file_path)
+    
+    del masked_patch
+    neg_masked_patch = np.where(mask[..., None] != 255, patch_array, 0)
+    dbg_nparray_to_png(neg_masked_patch, neg_file_path)
+#    np.save(neg_file_path, neg_masked_patch)
+
+json_path = "/home/meri/SharedFolder/Outputgeojson/Her2Neg_Case_01.geojson"
+slide_path = get_slide_path(json_path, svs_dir)
+masked_path, negative_path = get_output_file_paths(json_path, output_dir)
+processPath(json_path, slide_path, masked_path, negative_path)
+
+sys.exit(0)
 
 # Load GeoJSON annotation file
 geojson_path = "/home/meri/SharedFolder/Outputgeojson" 
@@ -25,6 +95,7 @@ for i in range(1, 94):
     x_coords = []
     y_coords = []
     # Process each annotation
+    patch_array = None
     for feature in annotations["features"]:
         slide_name = "Her2Pos_Case_" + num + ".svs" 
         geom = feature["geometry"]
@@ -67,21 +138,6 @@ for i in range(1, 94):
         slide.close()
 
     print("Patch extraction complete.")
-    def create_mask(patch_size, coords_NL, offset_x, offset_y):
-        """ Create a binary mask for the cancer region inside the patch. """
-        print("patch size = ", patch_size)
-        mask = Image.new("L", patch_size, 0)  # Black background
-        draw = ImageDraw.Draw(mask)
-        print("after draw")        
-        # Adjust coordinates relative to patch (since we extracted a bounding box)
-        relative_coords = [(x - offset_x, y - offset_y) for x, y in coords_NL]
-        print("reletive cords find")
-        # Draw polygon on mask (white for cancerous area)
-        draw.polygon(relative_coords, outline=255, fill=255)
-        print("draw polygon")
-        ret = np.array(mask)
-        print("after np.array(mask)")
-        return ret;
 
     # Generate mask
     print("before create masl")
