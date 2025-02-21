@@ -80,12 +80,13 @@ def process_conture(slide, conture, path_manager, feauture_idx, contur_idx):
     dbg_nparray_to_png(neg_masked_patch, path_manager.get_clean_file_path(feauture_idx, contur_idx, "png"))
 #    np.save(neg_file_path, neg_masked_patch)
 
-
+count = 1
 for f in os.listdir("/home/meri/SharedFolder/Outputgeojson"):
-    if f.lower().endswith('.geojson'):
+    if count > 47 and f.lower().endswith('.geojson'):
         json_path ="/home/meri/SharedFolder/Outputgeojson/" + str(f)
         path_manager = slide_path_manager(json_path)
         slide_path = path_manager.get_slide_file_path()
         process_slide(path_manager)
+    count = count + 1
 sys.exit(0)
 
