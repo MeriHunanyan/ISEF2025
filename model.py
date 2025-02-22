@@ -1,15 +1,8 @@
-import os
 import pandas as pd
-import random
+curDir = "/home/meri/Documents/ISEF_2025/ISEF2025/patch_data.csv"
+dataset = "/home/meri/SharedFolder/outnp"
+dataframe = pd.read_csv(curDir)
 
-folder_path = "/home/meri/SharedFolder/out"
-columns = ["FilePath", "label"]
-data= []
-for filename in os.listdir(folder_path):
-    data.append([os.path.join(folder_path, filename), filename.split("_")[5][0:4] == "tum"])
+train = image_datset_from_directory(
+        datset,
 
-df = pd.DataFrame(data, columns)
-
-df.to_csv("patch_data.csv", index=false)
-print("hello")
-print(df.head())

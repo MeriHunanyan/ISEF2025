@@ -7,7 +7,7 @@ from PIL import Image, ImageDraw
 from pathlib import Path
 
 svs_dir = "/home/meri/SharedFolder/PKG-HER2tumorROIs_v3/Yale_HER2_cohort/SVS/"
-output_dir = "/home/meri/SharedFolder/out"
+output_dir = "/home/meri/SharedFolder/outnp"
 
 class slide_path_manager:
     def __init__(self, annotation_file_path):
@@ -72,12 +72,14 @@ def process_conture(slide, conture, path_manager, feauture_idx, contur_idx):
     del patch
     mask = create_mask((width, height), conture, xmin, ymin)
     masked_patch = np.where(mask[..., None] == 255, patch_array, 0)
+    np.save(path_manager.get_tumor_file_path(feauture_idx, contur_idx, ".npy"), masked_patch)
 #    np.save(mask_file_path, masked_patch)
-    dbg_nparray_to_png(masked_patch, path_manager.get_tumor_file_path(feauture_idx, contur_idx, "png"))
+    #dbg_nparray_to_png(masked_patch, path_manager.get_tumor_file_path(feauture_idx, contur_idx, "png"))
     
     del masked_patch
     neg_masked_patch = np.where(mask[..., None] != 255, patch_array, 0)
-    dbg_nparray_to_png(neg_masked_patch, path_manager.get_clean_file_path(feauture_idx, contur_idx, "png"))
+    np.save(path_manager.get_clean_file_path(feauture_idx, contur_idx, ".npy"), neg_masked_patch)
+    #dbg_nparray_to_png(neg_masked_patch, path_manager.get_clean_file_path(feauture_idx, contur_idx, "png"))
 #    np.save(neg_file_path, neg_masked_patch)
 
 count = 1
